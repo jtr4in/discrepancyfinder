@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Data Comparison Tool with Affiliate Summary</title>
+    <style>
+        :root {
+            --primary-color: #dd1e31;
+            --primary-hover: #b5182a;
+            --background-color: #f0f0f0;
+            --text-color: #333333;
+            --border-color: #cccccc;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .grid-item {
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .copy-button {
+            padding: 5px 10px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        #results {
+            margin-top: 30px;
+        }
+
+        .discrepancy {
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 18px;
+            color: var(--primary-color);
+        }
+
+        .summary {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Data Comparison Tool with Affiliate Summary</h1>
+    <div class="grid-container">
+        <div class="grid-item">
+            <h2>Admin Data</h2>
+            <textarea id="adminData" placeholder="Paste admin data here..."></textarea>
+        </div>
+        <div class="grid-item">
+            <h2>Advertiser Data</h2>
+            <textarea id="advertiserData" placeholder="Paste advertiser data here..."></textarea>
+        </div>
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+        <button onclick="analyzeData()">Analyze</button>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        function analyzeData() {
+            const adminData = parseData(document.getElementById('adminData').value);
+            const advertiserData = parseData(document.getElementById('advertiserData').value);
+            
+            const { adminMissing, advertiserMissing, totalDiscrepancy } = compareData(adminData, advertiserData);
+            const adminDuplicates = findDuplicates(adminData);
+            const advertiserDuplicates = findDuplicates(advertiserData);
+            
+            displayResults(adminMissing, advertiserMissing, adminDuplicates, advertiserDuplicates, totalDiscrepancy);
+        }
+
+        function parseData(input) {
+            return input.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map(line => {
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 3) {
+                        return {
+                            clickId: parts[0],
+                            affiliateId: parts[1],
+                            earnings: parseFloat(parts[2])
+                        };
+                    }
+                    return null;
+                })
+                .filter(item => item !== null && !isNaN(item.earnings));
+        }
+
+        function compareData(adminData, advertiserData) {
+            const adminMap = new Map(adminData.map(item => [item.clickId, item]));
+            const advertiserMap = new Map(advertiserData.map(item => [item.clickId, item]));
+
+            const adminMissing = advertiserData.filter(item => !adminMap.has(item.clickId));
+            const advertiserMissing = adminData.filter(item => !advertiserMap.has(item.clickId));
+
+            const adminTotal = adminData.reduce((sum, item) => sum + item.earnings, 0);
+            const advertiserTotal = advertiserData.reduce((sum, item) => sum + item.earnings, 0);
+            const totalDiscrepancy = adminTotal - advertiserTotal;
+
+            return { adminMissing, advertiserMissing, totalDiscrepancy };
+        }
+
+        function findDuplicates(data) {
+            const counts = {};
+            const duplicates = [];
+            data.forEach(item => {
+                if (item.clickId !== '0' && item.clickId.trim() !== '') {
+                    if (counts[item.clickId]) {
+                        counts[item.clickId].count++;
+                        counts[item.clickId].totalEarnings += item.earnings;
+                    } else {
+                        counts[item.clickId] = { count: 1, totalEarnings: item.earnings };
+                    }
+                }
+            });
+            for (const [clickId, info] of Object.entries(counts)) {
+                if (info.count > 1) {
+                    duplicates.push({ clickId, count: info.count, totalEarnings: info.totalEarnings });
+                }
+            }
+            return duplicates;
+        }
+
+        function displayResults(adminMissing, advertiserMissing, adminDuplicates, advertiserDuplicates, totalDiscrepancy) {
+            let html = '<div class="grid-container">';
+            
+            html += '<div class="grid-item">';
+            html += createDetailedTable(adminMissing, "Admin did not track:", "admin-missing");
+            html += createDuplicateTable(adminDuplicates, "Admin Duplicate Click IDs:", "admin-duplicates");
+            html += createAffiliateSummary(adminMissing, "Admin Missed Earnings by Affiliate:");
+            html += '</div>';
+
+            html += '<div class="grid-item">';
+            html += createDetailedTable(advertiserMissing, "Advertiser did not track:", "advertiser-missing");
+            html += createDuplicateTable(advertiserDuplicates, "Advertiser Duplicate Click IDs:", "advertiser-duplicates");
+            html += createAffiliateSummary(advertiserMissing, "Advertiser Missed Earnings by Affiliate:");
+            html += '</div>';
+
+            html += '</div>';
+
+            html += createSummary(adminMissing, advertiserMissing, totalDiscrepancy);
+
+            document.getElementById('results').innerHTML = html;
+        }
+
+        function createDetailedTable(data, title, id) {
+            if (data.length === 0) return '';
+
+            let tableHtml = `<h3>${title}</h3>`;
+            tableHtml += `<table id="${id}">
+                <tr>
+                    <th>Click ID <button class="copy-button" onclick="copyClickIDs('${id}')">Copy IDs</button></th>
+                    <th>Affiliate ID</th>
+                    <th>Earnings</th>
+                </tr>`;
+            let totalMissedEarnings = 0;
+            for (const item of data) {
+                totalMissedEarnings += item.earnings;
+                tableHtml += `<tr>
+                    <td>${item.clickId}</td>
+                    <td>${item.affiliateId}</td>
+                    <td>$${item.earnings.toFixed(2)}</td>
+                </tr>`;
+            }
+            tableHtml += `<tr>
+                <td colspan="2"><strong>Total Missed Earnings:</strong></td>
+                <td><strong>$${totalMissedEarnings.toFixed(2)}</strong></td>
+            </tr>`;
+            tableHtml += '</table>';
+            return tableHtml;
+        }
+
+        function createDuplicateTable(data, title, id) {
+            if (data.length === 0) return '';
+
+            let tableHtml = `<h3>${title}</h3>`;
+            tableHtml += `<table id="${id}">
+                <tr>
+                    <th>Click ID <button class="copy-button" onclick="copyClickIDs('${id}')">Copy IDs</button></th>
+                    <th>Count</th>
+                    <th>Total Earnings</th>
+                </tr>`;
+            for (const item of data) {
+                tableHtml += `<tr>
+                    <td>${item.clickId}</td>
+                    <td>${item.count}</td>
+                    <td>$${item.totalEarnings.toFixed(2)}</td>
+                </tr>`;
+            }
+            tableHtml += '</table>';
+            return tableHtml;
+        }
+
+        function createAffiliateSummary(data, title) {
+            if (data.length === 0) return '';
+
+            const affiliateSummary = data.reduce((acc, item) => {
+                if (!acc[item.affiliateId]) {
+                    acc[item.affiliateId] = 0;
+                }
+                acc[item.affiliateId] += item.earnings;
+                return acc;
+            }, {});
+
+            let summaryHtml = `<h3>${title}</h3>`;
+            summaryHtml += '<table>';
+            summaryHtml += '<tr><th>Affiliate ID</th><th>Total Missed Earnings</th></tr>';
+            for (const [affiliateId, totalEarnings] of Object.entries(affiliateSummary)) {
+                summaryHtml += `<tr>
+                    <td>${affiliateId}</td>
+                    <td>$${totalEarnings.toFixed(2)}</td>
+                </tr>`;
+            }
+            summaryHtml += '</table>';
+
+            return summaryHtml;
+        }
+
+        function createSummary(adminMissing, advertiserMissing, totalDiscrepancy) {
+            const adminMissedEarnings = adminMissing.reduce((sum, item) => sum + item.earnings, 0);
+            const advertiserMissedEarnings = advertiserMissing.reduce((sum, item) => sum + item.earnings, 0);
+
+            let summaryHtml = '<div class="summary">';
+            summaryHtml += `<h3>Overall Summary</h3>`;
+            summaryHtml += `<p>Admin Missed Earnings: $${adminMissedEarnings.toFixed(2)}</p>`;
+            summaryHtml += `<p>Advertiser Missed Earnings: $${advertiserMissedEarnings.toFixed(2)}</p>`;
+            summaryHtml += `<p>Total Discrepancy: $${Math.abs(totalDiscrepancy).toFixed(2)} `;
+            summaryHtml += totalDiscrepancy > 0 ? '(Admin tracked more)' : '(Advertiser tracked more)';
+            summaryHtml += '</p>';
+            summaryHtml += '</div>';
+
+            return summaryHtml;
+        }
+
+        function copyClickIDs(tableId) {
+            const table = document.getElementById(tableId);
+            const clickIDs = Array.from(table.getElementsByTagName('tr'))
+                .slice(1)  // Skip the header row
+                .map(row => row.cells[0].textContent)
+                .join('\n');
+            
+            navigator.clipboard.writeText(clickIDs).then(() => {
+                alert('Click IDs copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy click IDs. Please try again.');
+            });
+        }
+    </script>
+</body>
+</html>
